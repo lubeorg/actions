@@ -4,7 +4,7 @@ Official GitHub Actions for integrating with the [Lube](https://lube.dev) platfo
 
 ## Actions
 
-### `lube-dev/actions/mark-deployment`
+### `lubeorg/actions/actions/mark-deployment`
 
 Record a deployment in Lube. Supports `auto` mode (wraps the whole job), or explicit `start`/`finish` steps for accurate failure reporting.
 
@@ -12,7 +12,7 @@ Record a deployment in Lube. Supports `auto` mode (wraps the whole job), or expl
 # Recommended: explicit start + always() finish
 - name: Mark deployment started
   id: deploy_start
-  uses: lube-dev/actions/mark-deployment@v2
+  uses: lubeorg/actions/actions/mark-deployment@v2
   with:
     api-key: ${{ secrets.LUBE_API_KEY }}
     product-id: ${{ vars.LUBE_PRODUCT_ID }}
@@ -25,7 +25,7 @@ Record a deployment in Lube. Supports `auto` mode (wraps the whole job), or expl
 
 - name: Mark deployment finished
   if: always()
-  uses: lube-dev/actions/mark-deployment@v2
+  uses: lubeorg/actions/actions/mark-deployment@v2
   with:
     api-key: ${{ secrets.LUBE_API_KEY }}
     product-id: ${{ vars.LUBE_PRODUCT_ID }}
@@ -67,14 +67,14 @@ Record a deployment in Lube. Supports `auto` mode (wraps the whole job), or expl
 
 ---
 
-### `lube-dev/actions/upload-test-results`
+### `lubeorg/actions/actions/upload-test-results`
 
 Upload a test report to Lube. Supports JUnit XML and native JSON reporters from Vitest, Jest, Go, Rust (nextest), Python (pytest), and Ruby (RSpec). Always add `if: always()` so failing runs still upload.
 
 ```yaml
 - name: Upload test results to Lube
   if: always()
-  uses: lube-dev/actions/upload-test-results@v2
+  uses: lubeorg/actions/actions/upload-test-results@v2
   with:
     api-key: ${{ secrets.LUBE_API_KEY }}
     app-id: ${{ vars.LUBE_APP_ID }}
@@ -126,7 +126,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: lube-dev/actions/upload-test-results@v2
+        uses: lubeorg/actions/actions/upload-test-results@v2
         with:
           api-key: ${{ secrets.LUBE_API_KEY }}
           app-id: ${{ vars.LUBE_APP_ID }}
@@ -134,7 +134,7 @@ jobs:
 
       - name: Mark deployment started
         id: deploy_start
-        uses: lube-dev/actions/mark-deployment@v2
+        uses: lubeorg/actions/actions/mark-deployment@v2
         with:
           api-key: ${{ secrets.LUBE_API_KEY }}
           product-id: ${{ vars.LUBE_PRODUCT_ID }}
@@ -147,7 +147,7 @@ jobs:
 
       - name: Mark deployment finished
         if: always()
-        uses: lube-dev/actions/mark-deployment@v2
+        uses: lubeorg/actions/actions/mark-deployment@v2
         with:
           api-key: ${{ secrets.LUBE_API_KEY }}
           product-id: ${{ vars.LUBE_PRODUCT_ID }}
