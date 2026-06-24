@@ -1,0 +1,12 @@
+{
+  "name": "@lube/action-mark-deployment",
+  "version": "2.0.0",
+  "private": true,
+  "description": "GitHub Action that records deployments in Lube via a self-contained Node.js script.",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

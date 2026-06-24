@@ -1,0 +1,152 @@
+name: 'Lube - Upload Test Results'
+description: >-
+  Uploads a test report (JUnit XML, or a native JSON reporter from Vitest, Jest,
+  Go, Rust, Python, or Ruby) to Lube so the run and its history show up in the
+  dashboard. Wraps the @lubed/test-uploader CLI. Add it as an `if: always()`
+  step after your tests so failing runs still upload.
+
+author: 'Lube'
+
+branding:
+  icon: 'upload-cloud'
+  color: 'blue'
+
+# Inputs use stable ids (app-id) so renames in the dashboard never break CI.
+inputs:
+  app-id:
+    description: Lube application ID to tag the run to (stable id from the dashboard, not the slug or name).
+    required: true
+  api-key:
+    description: >-
+      Lube API key (Bearer token). Store as a secret. Needs the testRun.create
+      grant. Passed to the CLI via the MERGED_API_KEY env var, never as a logged
+      argument.
+    required: true
+  file:
+    description: >-
+      Path to the test report file (relative to working-directory). Auto-detected
+      from conventional paths (vitest-results.json, junit.xml, test-results/*.xml,
+      ...) when omitted.
+    required: false
+    default: ''
+  format:
+    description: >-
+      Report format — one of: junit_xml | vitest_json | jest_json | gotest_json
+      | gotestsum_json | nextest_json | pytest_json | rspec_json. Auto-detected
+      from the filename when omitted.
+    required: false
+    default: ''
+  environment:
+    description: Optional environment label for the run (e.g. Preview, staging, production).
+    required: false
+    default: ''
+  service-id:
+    description: >-
+      Optional stable id of the contributing service within the application.
+      Preferred over service-name when known.
+    required: false
+    default: ''
+  service-name:
+    description: >-
+      Optional contributing service name (e.g. api-primary-v2). Matched or
+      auto-created within the application so test runs group per service.
+    required: false
+    default: ''
+  api-url:
+    description: Lube API base URL. Override for self-hosted.
+    required: false
+    default: 'https://api.lube.dev'
+  version:
+    description: >-
+      Version (or dist-tag) of @lubed/test-uploader to run via npx. Pin to a
+      version for reproducible CI; use "latest" to always pull the newest.
+    required: false
+    default: '0.6.0'
+  working-directory:
+    description: Directory to run the upload from (where report auto-detection probes).
+    required: false
+    default: '.'
+  fail-on-error:
+    description: >-
+      When "true" (default) the step fails if the upload fails. Set "false" to
+      keep uploads non-blocking, so a flaky upload never fails the job.
+    required: false
+    default: 'true'
+
+outputs:
+  run-id:
+    description: The id of the created test run.
+    value: ${{ steps.upload.outputs.run-id }}
+  dashboard-url:
+    description: URL to view the run in the Lube dashboard (empty when not returned).
+    value: ${{ steps.upload.outputs.dashboard-url }}
+  total:
+    description: Total number of tests in the run.
+    value: ${{ steps.upload.outputs.total }}
+  passed:
+    description: Number of passed tests.
+    value: ${{ steps.upload.outputs.passed }}
+  failed:
+    description: Number of failed tests.
+    value: ${{ steps.upload.outputs.failed }}
+  skipped:
+    description: Number of skipped tests.
+    value: ${{ steps.upload.outputs.skipped }}
+
+runs:
+  using: composite
+  steps:
+    - id: upload
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        # Secrets and config travel as env vars so the API key never appears in
+        # an argument list or the rendered command line in the log.
+        MERGED_API_KEY: ${{ inputs.api-key }}
+        MERGED_API_URL: ${{ inputs.api-url }}
+        INPUT_APP_ID: ${{ inputs.app-id }}
+        INPUT_FILE: ${{ inputs.file }}
+        INPUT_FORMAT: ${{ inputs.format }}
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        INPUT_SERVICE_ID: ${{ inputs.service-id }}
+        INPUT_SERVICE_NAME: ${{ inputs.service-name }}
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_FAIL_ON_ERROR: ${{ inputs.fail-on-error }}
+        SET_OUTPUTS_SCRIPT: ${{ github.action_path }}/set-outputs.mjs
+      run: |
+        # Disable errexit: GitHub runs composite bash with `-e`, which would
+        # abort this step the moment `npx` exits non-zero (e.g. an unpublished
+        # version) — before the fail-on-error handling below can run. We capture
+        # and handle the exit status explicitly instead.
+        set +e
+        set -uo pipefail
+
+        # Assemble upload args. Empty inputs are omitted so the CLI's own
+        # auto-detection (file/format) and defaults apply.
+        args=(upload --app "$INPUT_APP_ID" --json)
+        if [ -n "$INPUT_FILE" ]; then args+=(--file "$INPUT_FILE"); fi
+        if [ -n "$INPUT_FORMAT" ]; then args+=(--format "$INPUT_FORMAT"); fi
+        if [ -n "$INPUT_ENVIRONMENT" ]; then args+=(--env "$INPUT_ENVIRONMENT"); fi
+        if [ -n "$INPUT_SERVICE_ID" ]; then args+=(--service-id "$INPUT_SERVICE_ID"); fi
+        if [ -n "$INPUT_SERVICE_NAME" ]; then args+=(--service-name "$INPUT_SERVICE_NAME"); fi
+
+        spec="@lubed/test-uploader"
+        if [ -n "$INPUT_VERSION" ]; then spec="@lubed/test-uploader@${INPUT_VERSION}"; fi
+
+        # Capture stdout (the JSON payload) while letting stderr (errors,
+        # progress) flow to the action log.
+        upload_stdout="$(npx -y "$spec" "${args[@]}")"
+        status=$?
+
+        echo "$upload_stdout"
+
+        if [ $status -ne 0 ]; then
+          echo "::warning title=Lube test upload::Upload failed with exit code ${status}."
+          if [ "$INPUT_FAIL_ON_ERROR" = "true" ]; then
+            exit $status
+          fi
+          exit 0
+        fi
+
+        # Parse the JSON payload into individual step outputs.
+        printf '%s' "$upload_stdout" | node "$SET_OUTPUTS_SCRIPT"

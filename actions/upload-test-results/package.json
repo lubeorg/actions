@@ -1,0 +1,13 @@
+{
+  "name": "@lube/action-upload-test-results",
+  "version": "2.0.0",
+  "private": true,
+  "description": "GitHub Action that uploads test results to Lube via the @lubed/test-uploader CLI.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,97 @@
+name: 'Lube - Mark Deployment'
+description: >-
+  Records a deployment in Lube and (in auto mode) reports its final success or
+  failure when the job ends. A single step instruments the whole job: it creates
+  the deployment as in_progress on entry and concludes it in a post step.
+
+author: 'Lube'
+
+branding:
+  icon: 'flag'
+  color: 'green'
+
+# Inputs use stable IDs (product-id, environment-id) so renames never break CI.
+# Copy them from the product detail page and environment settings in Lube.
+inputs:
+  api-key:
+    description: >-
+      Lube API key (Bearer token). Store as a secret. Needs deployment:create,
+      deployment:update, and deployment:read grants (read is used to compute the
+      commit range since the previous deployment).
+    required: true
+  product-id:
+    description: Lube product ID (stable; not the slug or name).
+    required: true
+  environment-id:
+    description: Lube environment ID (stable; not the name).
+    required: true
+  service-id:
+    description: Stable Lube service ID. Preferred once known; use service-name only for first run or migration.
+    required: false
+    default: ''
+  service-name:
+    description: The contributing service/repo within the product (e.g. api-primary-v2). Optional.
+    required: false
+    default: ''
+  version:
+    description: Human version/tag for this deployment (e.g. 1.4.2). Optional.
+    required: false
+    default: ''
+  group-id:
+    description: Correlation id to group a multi-service release. Optional.
+    required: false
+    default: ''
+  deployment-type:
+    description: Rollout strategy — basic | blue_green | canary | rolling.
+    required: false
+    default: basic
+  trigger:
+    description: Deployment trigger — push | manual | api | promote | rollback | schedule.
+    required: false
+    default: push
+  environment-url:
+    description: URL of the running deployment (recorded on the final status). Optional.
+    required: false
+    default: ''
+  command:
+    description: auto | start | finish. "auto" creates on entry and finishes in the post step.
+    required: false
+    default: auto
+  status:
+    description: >-
+      Final status for command=finish. Pass the caller job status when possible.
+      Accepts success | failure | cancelled | error, or a Lube deploy status directly.
+    required: false
+    default: ''
+  deployment-id:
+    description: Deployment id to conclude with command=finish (from the start step's output).
+    required: false
+    default: ''
+  api-url:
+    description: Lube API base URL. Override for self-hosted.
+    required: false
+    default: 'https://api.lube.dev'
+  failure-mode:
+    description: >-
+      strict fails the workflow when Lube reporting fails; warn records a warning
+      and lets the deployment continue when the Lube API is unavailable.
+    required: false
+    default: strict
+
+outputs:
+  deployment-id:
+    description: The id of the created (or matched) deployment.
+  service-id:
+    description: The stable Lube service ID used for this deployment, when resolved.
+  service-name:
+    description: The service name used or resolved for this deployment.
+  service-created:
+    description: '"true" when Lube created the service from service-name during this run.'
+  service-resolution:
+    description: 'How the service was resolved: service_id, matched_by_name, created_from_name, or none.'
+
+runs:
+  using: node20
+  main: index.js
+  post: index.js
+  post-if: always()

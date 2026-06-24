@@ -1,0 +1,7 @@
+{
+  "name": "lube-actions",
+  "private": true,
+  "scripts": {
+    "test": "node --test actions/upload-test-results/set-outputs.mjs"
+  }
+}

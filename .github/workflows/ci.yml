@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Verify action entry points exist
+        run: |
+          missing=0
+          for action_dir in actions/*/; do
+            action_yml="${action_dir}action.yml"
+            if [ ! -f "$action_yml" ]; then
+              echo "::error::Missing action.yml in ${action_dir}"
+              missing=1
+              continue
+            fi
+            main=$(grep -E '^\s+main:' "$action_yml" | head -1 | sed 's/.*main: //' | tr -d "'" | xargs)
+            if [ -n "$main" ] && [ ! -f "${action_dir}${main}" ]; then
+              echo "::error::action.yml in ${action_dir} references missing file: ${main}"
+              missing=1
+            fi
+          done
+          exit $missing
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run upload-test-results unit tests
+        working-directory: actions/upload-test-results
+        run: node --test
