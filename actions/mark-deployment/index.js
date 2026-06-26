@@ -187,7 +187,7 @@ function isRetryableApiError(error) {
 function readConfig() {
   return {
     apiKey: getInput("api-key"),
-    apiUrl: (getInput("api-url") || "https://api.lube.dev").replace(/\/+$/, ""),
+    apiUrl: (getInput("api-url") || "https://api.lube.work").replace(/\/+$/, ""),
     productId: getInput("product-id"),
     environmentId: getInput("environment-id"),
     serviceId: getInput("service-id") || null,
