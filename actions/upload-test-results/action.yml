@@ -55,7 +55,7 @@ inputs:
   api-url:
     description: Lube API base URL. Override for self-hosted.
     required: false
-    default: 'https://api.lube.dev'
+    default: 'https://api.lube.work'
   version:
     description: >-
       Version (or dist-tag) of @lubed/test-uploader to run via npx. Pin to a

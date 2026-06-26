@@ -53,7 +53,7 @@ Record a deployment in Lube. Supports `auto` mode (wraps the whole job), or expl
 | `trigger` | No | `push` | `push`, `manual`, `api`, `promote`, `rollback`, or `schedule` |
 | `environment-url` | No | — | URL of the deployed environment |
 | `failure-mode` | No | `strict` | `strict` fails the workflow on API errors; `warn` logs and continues |
-| `api-url` | No | `https://api.lube.dev` | Override for self-hosted |
+| `api-url` | No | `https://api.lube.work` | Override for self-hosted |
 
 **Outputs**
 
@@ -95,7 +95,7 @@ Upload a test report to Lube. Supports JUnit XML and native JSON reporters from 
 | `version` | No | `0.6.0` | Version of `@lubed/test-uploader` to run via npx |
 | `working-directory` | No | `.` | Directory for file auto-detection |
 | `fail-on-error` | No | `true` | Set `false` to make uploads non-blocking |
-| `api-url` | No | `https://api.lube.dev` | Override for self-hosted |
+| `api-url` | No | `https://api.lube.work` | Override for self-hosted |
 
 **Outputs**
 

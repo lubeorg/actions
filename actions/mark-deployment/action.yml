@@ -70,7 +70,7 @@ inputs:
   api-url:
     description: Lube API base URL. Override for self-hosted.
     required: false
-    default: 'https://api.lube.dev'
+    default: 'https://api.lube.work'
   failure-mode:
     description: >-
       strict fails the workflow when Lube reporting fails; warn records a warning
