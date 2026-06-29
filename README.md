@@ -110,6 +110,127 @@ Upload a test report to Lube. Supports JUnit XML and native JSON reporters from 
 
 ---
 
+### `lubeorg/actions/actions/upload-lighthouse-report`
+
+Upload an existing Lighthouse JSON report to Lube. Use this when your workflow
+already runs Lighthouse, Lighthouse CI, Playwright, or another wrapper that
+produces a report file.
+
+```yaml
+- name: Upload Lighthouse report to Lube
+  if: always()
+  uses: lubeorg/actions/actions/upload-lighthouse-report@v2
+  with:
+    api-key: ${{ secrets.LUBE_API_KEY }}
+    target-id: ${{ vars.LUBE_PERFORMANCE_TARGET_ID }}
+    file: lhci/lighthouse-report.json
+    environment: Preview
+    service-name: web-app
+    target-url: ${{ steps.deploy.outputs.preview-url }}
+```
+
+**Inputs**
+
+| Input | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `api-key` | Yes | - | Lube API key (store as a secret). Needs the `performanceRun.create` grant. |
+| `target-id` | Yes | - | Stable Lube performance target ID from the dashboard |
+| `file` | No | auto-detected | Path to the Lighthouse JSON report |
+| `environment` | No | - | Environment label (e.g. `Preview`, `staging`, `production`) |
+| `service-id` | No | - | Stable Lube service ID |
+| `service-name` | No | - | Service name; matched or auto-created |
+| `target-url` | No | - | URL that was tested by Lighthouse |
+| `version` | No | `0.8.0` | Version of `@lubed/performance-uploader` to run via npx |
+| `working-directory` | No | `.` | Directory for report auto-detection |
+| `fail-on-error` | No | `true` | Set `false` to make uploads non-blocking |
+| `api-url` | No | `https://api.lube.work` | Override for self-hosted |
+
+**Outputs**
+
+| Output | Description |
+|--------|-------------|
+| `run-id` | Lube performance run ID |
+| `dashboard-url` | URL to view the run in the Lube dashboard |
+| `performance-score` | Lighthouse performance category score |
+| `lcp-ms` | Largest Contentful Paint in milliseconds |
+| `cls` | Cumulative Layout Shift |
+| `tbt-ms` | Total Blocking Time in milliseconds |
+| `budget-status` | Performance budget status, when evaluated |
+| `ingest-failed` | Whether server-side normalization failed after upload |
+| `summary-status` | Compact server-side summary status |
+| `upload-exit-code` | Exit code returned by the performance uploader CLI |
+
+---
+
+### `lubeorg/actions/actions/run-lighthouse`
+
+Run Lighthouse against a URL, write a JSON report, and upload that report to
+Lube. Use this when you do not want to hand-write the Lighthouse command in each
+repository.
+
+```yaml
+- name: Run Lighthouse and upload to Lube
+  if: always()
+  uses: lubeorg/actions/actions/run-lighthouse@v2
+  with:
+    api-key: ${{ secrets.LUBE_API_KEY }}
+    target-id: ${{ vars.LUBE_PERFORMANCE_TARGET_ID }}
+    url: ${{ steps.deploy.outputs.preview-url }}
+    environment: Preview
+    service-name: web-app
+    fail-on-upload-error: "false"
+```
+
+For authenticated pages, run your login/setup step before this action and pass
+any required Lighthouse config or Chrome flags through `config-path`,
+`chrome-flags`, or `extra-args`.
+
+This action is optimized for GitHub-hosted Ubuntu runners, where Node and Chrome
+are already available. On self-hosted runners, install Node and Chrome first or
+pass `chrome-path`.
+
+**Inputs**
+
+| Input | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `api-key` | Yes | - | Lube API key (store as a secret). Needs the `performanceRun.create` grant. |
+| `target-id` | Yes | - | Stable Lube performance target ID from the dashboard |
+| `url` | Yes | - | URL for Lighthouse to test |
+| `report-path` | No | `lhci/lighthouse-report.json` | Path where the generated JSON report is written |
+| `config-path` | No | - | Optional Lighthouse config file |
+| `chrome-flags` | No | `--headless=new --no-sandbox` | Chrome flags passed to Lighthouse |
+| `chrome-path` | No | - | Chrome executable path for self-hosted runners |
+| `extra-args` | No | - | Additional Lighthouse CLI arguments, one per line |
+| `environment` | No | - | Environment label (e.g. `Preview`, `staging`, `production`) |
+| `service-id` | No | - | Stable Lube service ID |
+| `service-name` | No | - | Service name; matched or auto-created |
+| `uploader-version` | No | `0.8.0` | Version of `@lubed/performance-uploader` to run via npx |
+| `lighthouse-version` | No | `13.4.0` | Version of `lighthouse` to run via npx |
+| `working-directory` | No | `.` | Directory to run Lighthouse and upload from |
+| `fail-on-lighthouse-error` | No | `true` | Fail after upload when Lighthouse exits non-zero |
+| `fail-on-upload-error` | No | `true` | Fail when uploading to Lube fails |
+| `api-url` | No | `https://api.lube.work` | Override for self-hosted |
+
+**Outputs**
+
+| Output | Description |
+|--------|-------------|
+| `report-path` | Path to the generated Lighthouse JSON report |
+| `lighthouse-exit-code` | Exit code returned by Lighthouse |
+| `report-exists` | Whether the Lighthouse JSON report was created |
+| `run-id` | Lube performance run ID |
+| `dashboard-url` | URL to view the run in the Lube dashboard |
+| `performance-score` | Lighthouse performance category score |
+| `lcp-ms` | Largest Contentful Paint in milliseconds |
+| `cls` | Cumulative Layout Shift |
+| `tbt-ms` | Total Blocking Time in milliseconds |
+| `budget-status` | Performance budget status, when evaluated |
+| `ingest-failed` | Whether server-side normalization failed after upload |
+| `summary-status` | Compact server-side summary status |
+| `upload-exit-code` | Exit code returned by the performance uploader CLI |
+
+---
+
 ## Full pipeline example
 
 ```yaml
@@ -131,6 +252,17 @@ jobs:
           api-key: ${{ secrets.LUBE_API_KEY }}
           app-id: ${{ vars.LUBE_APP_ID }}
           file: reports/junit.xml
+
+      - name: Run Lighthouse
+        if: always()
+        uses: lubeorg/actions/actions/run-lighthouse@v2
+        with:
+          api-key: ${{ secrets.LUBE_API_KEY }}
+          target-id: ${{ vars.LUBE_PERFORMANCE_TARGET_ID }}
+          url: ${{ steps.deploy_preview.outputs.preview-url }}
+          environment: Preview
+          service-name: my-app
+          fail-on-upload-error: "false"
 
       - name: Mark deployment started
         id: deploy_start
@@ -162,6 +294,6 @@ jobs:
 No build step required — both actions are self-contained.
 
 ```bash
-# Run unit tests for upload-test-results
-cd actions/upload-test-results && node --test
+# Run unit tests for action output parsers
+node --test actions/*/*.test.mjs
 ```

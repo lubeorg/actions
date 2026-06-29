@@ -1,0 +1,13 @@
+{
+  "name": "@lube/action-upload-lighthouse-report",
+  "version": "2.0.0",
+  "private": true,
+  "description": "GitHub Action that uploads Lighthouse reports to Lube via the @lubed/performance-uploader CLI.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
