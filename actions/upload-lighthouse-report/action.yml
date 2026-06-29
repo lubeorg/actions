@@ -1,0 +1,150 @@
+name: 'Lube - Upload Lighthouse Report'
+description: >-
+  Uploads a Lighthouse JSON report to Lube so performance history shows up in
+  the dashboard. Wraps the @lubed/performance-uploader CLI. Run Lighthouse in
+  your CI environment first, then add this as an `if: always()` upload step.
+
+author: 'Lube'
+
+branding:
+  icon: 'activity'
+  color: 'purple'
+
+inputs:
+  target-id:
+    description: Lube performance target ID to tag the run to (stable id from the dashboard, not the URL).
+    required: true
+  api-key:
+    description: >-
+      Lube API key (Bearer token). Store as a secret. Needs the
+      performanceRun.create grant. Passed to the CLI via env vars, never as a
+      logged argument.
+    required: true
+  file:
+    description: >-
+      Path to the Lighthouse JSON report file (relative to working-directory).
+      Auto-detected from conventional paths when omitted.
+    required: false
+    default: ''
+  environment:
+    description: Optional environment label for the run (e.g. Preview, staging, production).
+    required: false
+    default: ''
+  service-id:
+    description: >-
+      Optional stable id of the contributing service within the product.
+      Preferred over service-name when known.
+    required: false
+    default: ''
+  service-name:
+    description: >-
+      Optional contributing service name (e.g. web-app). Matched or auto-created
+      within the product so performance runs group per service.
+    required: false
+    default: ''
+  target-url:
+    description: Optional URL that was tested by Lighthouse.
+    required: false
+    default: ''
+  api-url:
+    description: Lube API base URL. Override for self-hosted.
+    required: false
+    default: 'https://api.lube.work'
+  version:
+    description: >-
+      Version (or dist-tag) of @lubed/performance-uploader to run via npx. Pin
+      to a version for reproducible CI; use "latest" to always pull the newest.
+    required: false
+    default: '0.8.0'
+  working-directory:
+    description: Directory to run the upload from (where report auto-detection probes).
+    required: false
+    default: '.'
+  fail-on-error:
+    description: >-
+      When "true" (default) the step fails if the upload fails. Set "false" to
+      keep uploads non-blocking, so a flaky upload never fails the job.
+    required: false
+    default: 'true'
+
+outputs:
+  run-id:
+    description: The id of the created Lighthouse performance run.
+    value: ${{ steps.upload.outputs.run-id }}
+  dashboard-url:
+    description: URL to view the run in the Lube dashboard (empty when not returned).
+    value: ${{ steps.upload.outputs.dashboard-url }}
+  performance-score:
+    description: Lighthouse performance category score.
+    value: ${{ steps.upload.outputs.performance-score }}
+  lcp-ms:
+    description: Largest Contentful Paint in milliseconds.
+    value: ${{ steps.upload.outputs.lcp-ms }}
+  cls:
+    description: Cumulative Layout Shift.
+    value: ${{ steps.upload.outputs.cls }}
+  tbt-ms:
+    description: Total Blocking Time in milliseconds.
+    value: ${{ steps.upload.outputs.tbt-ms }}
+  budget-status:
+    description: Performance budget status (empty when no budgets were evaluated).
+    value: ${{ steps.upload.outputs.budget-status }}
+  ingest-failed:
+    description: Whether server-side normalization failed after accepting the artifact.
+    value: ${{ steps.upload.outputs.ingest-failed }}
+  summary-status:
+    description: Compact server-side summary status for the run.
+    value: ${{ steps.upload.outputs.summary-status }}
+  upload-exit-code:
+    description: Exit code returned by the performance uploader CLI.
+    value: ${{ steps.upload.outputs.upload-exit-code }}
+
+runs:
+  using: composite
+  steps:
+    - id: upload
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        LUBE_API_KEY: ${{ inputs.api-key }}
+        LUBE_API_URL: ${{ inputs.api-url }}
+        MERGED_API_KEY: ${{ inputs.api-key }}
+        MERGED_API_URL: ${{ inputs.api-url }}
+        INPUT_TARGET_ID: ${{ inputs.target-id }}
+        INPUT_FILE: ${{ inputs.file }}
+        INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        INPUT_SERVICE_ID: ${{ inputs.service-id }}
+        INPUT_SERVICE_NAME: ${{ inputs.service-name }}
+        INPUT_TARGET_URL: ${{ inputs.target-url }}
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_FAIL_ON_ERROR: ${{ inputs.fail-on-error }}
+        SET_OUTPUTS_SCRIPT: ${{ github.action_path }}/set-outputs.mjs
+      run: |
+        set +e
+        set -uo pipefail
+
+        args=(upload-lighthouse --target "$INPUT_TARGET_ID" --json)
+        if [ -n "$INPUT_FILE" ]; then args+=(--file "$INPUT_FILE"); fi
+        if [ -n "$INPUT_ENVIRONMENT" ]; then args+=(--env "$INPUT_ENVIRONMENT"); fi
+        if [ -n "$INPUT_SERVICE_ID" ]; then args+=(--service-id "$INPUT_SERVICE_ID"); fi
+        if [ -n "$INPUT_SERVICE_NAME" ]; then args+=(--service-name "$INPUT_SERVICE_NAME"); fi
+        if [ -n "$INPUT_TARGET_URL" ]; then args+=(--target-url "$INPUT_TARGET_URL"); fi
+
+        spec="@lubed/performance-uploader"
+        if [ -n "$INPUT_VERSION" ]; then spec="@lubed/performance-uploader@${INPUT_VERSION}"; fi
+
+        upload_stdout="$(npx -y "$spec" "${args[@]}")"
+        status=$?
+
+        echo "$upload_stdout"
+        echo "upload-exit-code=$status" >> "$GITHUB_OUTPUT"
+
+        if [ $status -ne 0 ]; then
+          echo "::warning title=Lube Lighthouse upload::Upload failed with exit code ${status}."
+          if [ "$INPUT_FAIL_ON_ERROR" = "true" ]; then
+            exit $status
+          fi
+          exit 0
+        fi
+
+        printf '%s' "$upload_stdout" | node "$SET_OUTPUTS_SCRIPT"

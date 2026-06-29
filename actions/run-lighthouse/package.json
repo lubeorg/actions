@@ -1,0 +1,13 @@
+{
+  "name": "@lube/action-run-lighthouse",
+  "version": "2.0.0",
+  "private": true,
+  "description": "GitHub Action that runs Lighthouse and uploads the report to Lube.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
